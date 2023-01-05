@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const { User } = require('../models');
+const jwt = require('jsonwebtoken');
 
 module.exports = {
   register: async (req, res) => {
@@ -13,11 +14,42 @@ module.exports = {
 
       res.status(201).send({ status: 'success', data: user });
     } catch (error) {
-      res.send(error.message);
+      res.send({ status: 'Error', message: error.message });
     }
   },
 
-  login: (req, res) => {
-    res.send('login resp');
+  login: async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      let user = await User.findOne({ where: { email } });
+
+      // * User not found
+      if (!user) {
+        return res.status(404).send({
+          message: 'User not found',
+        });
+      }
+
+      // * Wrong password
+      if (!bcrypt.compareSync(password, user.password)) {
+        return res.status(401).send({
+          message: 'Incorrect Password',
+        });
+      }
+
+      const payload = {
+        username: user.username,
+        email: user.email,
+      };
+
+      const token = jwt.sign(payload, process.env.SECRET, {
+        expiresIn: '1d',
+      });
+
+      res.send({ message: 'Login Success', token: `Bearer ${token}` });
+    } catch (error) {
+      res.send({ status: 'Error', message: error.message });
+    }
   },
 };
