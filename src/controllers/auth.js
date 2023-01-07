@@ -47,9 +47,17 @@ module.exports = {
         expiresIn: '1d',
       });
 
-      res.send({ message: 'Login Success', token: `Bearer ${token}` });
+      res
+        .status(200)
+        .send({ message: 'Login Success', token: `Bearer ${token}` });
     } catch (error) {
       res.send({ status: 'Error', message: error.message });
     }
+  },
+
+  profile: (req, res) => {
+    const { id, username, email } = req.user;
+    const user = { id, username, email };
+    res.send(user);
   },
 };
