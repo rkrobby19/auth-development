@@ -10,6 +10,8 @@ require('../utils/passport-jwt'); // * Requiring passport-jwt strategy
 router.post('/register', jsonParser, auth.register);
 // * Login
 router.post('/login', jsonParser, auth.login);
+// * Logout
+router.post('/logout', auth.logout);
 
 // * Profile
 router.get(

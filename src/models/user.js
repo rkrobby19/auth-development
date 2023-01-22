@@ -33,6 +33,17 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         type: DataTypes.STRING,
       },
+      googleId: {
+        allowNull: true,
+        type: DataTypes.STRING,
+      },
+      refresh_token: {
+        type: DataTypes.STRING,
+      },
+      token_version: {
+        type: DataTypes.INTEGER,
+        defaultValue: 0,
+      },
     },
     {
       sequelize,

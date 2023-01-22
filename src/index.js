@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const app = express();
 const session = require('express-session');
+const cookieParser = require('cookie-parser');
 const ejs = require('ejs');
 const passport = require('passport');
 
@@ -18,6 +19,8 @@ app.use(
     cookie: { secure: true },
   })
 );
+
+app.use(cookieParser());
 
 // initialize passport to be used
 app.use(passport.initialize());
