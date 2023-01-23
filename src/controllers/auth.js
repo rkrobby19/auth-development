@@ -51,7 +51,7 @@ module.exports = {
       const currentToken = Jwt.verifyRefresh(user.refresh_token);
 
       // ! Exp refresh token
-      if (currentToken === 'jwt expired') {
+      if (currentToken.message === 'jwt expired') {
         // * Update version
         const newTokenVersion = user.token_version + 1;
 
@@ -127,7 +127,19 @@ module.exports = {
     }
   },
 
-  logout: async (req, res) => {
+  refresh_token: async (req, res) => {
+    const { username, email } = req.user;
+
+    const payload = {
+      username,
+      email,
+    };
+
+    const access_token = Jwt.signAccess(payload);
+    res.send({ access_token });
+  },
+
+  revoke: async (req, res) => {
     try {
       // * Get refresh token
       const token = req.cookies.refresh_token;

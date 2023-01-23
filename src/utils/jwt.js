@@ -18,7 +18,7 @@ module.exports = class Jwt {
   static verifyRefresh = (token) =>
     jwt.verify(token, process.env.REFRESH_SECRET, function (err, decoded) {
       if (err) {
-        return err.message;
+        return err;
       }
       return decoded;
     });
