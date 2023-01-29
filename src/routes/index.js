@@ -2,6 +2,9 @@ const express = require('express');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { User } = require('../models');
+const Jwt = require('../utils/jwt');
+const Errors = require('../constants/errors');
+const UserServices = require('../services/user-services');
 
 passport.use(
   new GoogleStrategy(
@@ -16,14 +19,45 @@ passport.use(
         where: { email: profile.emails[0].value },
       });
       if (data) {
+        let { refresh_token, token_version } = data;
+
+        const currentToken = Jwt.verifyRefresh(refresh_token);
+
+        if (
+          currentToken.name === Errors.TokenExpiredError ||
+          currentToken.token_version !== token_version
+        ) {
+          const payloadRefresh = {
+            username: data.username,
+            email: data.email,
+            token_version: data.token_version,
+          };
+
+          const newRefreshToken = Jwt.signRefresh(payloadRefresh);
+
+          await UserServices.updateRefreshToken(user.email, newRefreshToken);
+
+          // refresh_token = newRefreshToken;
+        }
+
         return cb(null, data);
       } else {
+        const payload = {
+          username: profile.displayName,
+          email: profile.emails[0].value,
+          token_version: 0,
+        };
+
+        const refresh_token = await Jwt.signRefresh(payload);
+
         let user = await User.create({
           username: profile.displayName,
           email: profile.emails[0].value,
-          password: 123456,
+          password: 'fromGoogleOauth',
           googleId: profile.id,
+          refresh_token,
         });
+
         return cb(null, user);
       }
     }
