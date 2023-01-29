@@ -1,3 +1,4 @@
+const Errors = require('../constants/errors');
 const UserServices = require('../services/user-services');
 const Jwt = require('../utils/jwt');
 
@@ -6,7 +7,6 @@ module.exports = {
     try {
       const { username, email, password } = req.body;
 
-      // * Create refresh_token payload
       const payload = {
         username,
         email,
@@ -24,7 +24,9 @@ module.exports = {
 
       res.status(201).send({ status: 'success', user: user.username });
     } catch (error) {
-      res.send({ status: 'Error', message: error.message });
+      res
+        .status(422)
+        .send({ status: error.message, message: error.errors[0].message });
     }
   },
 
@@ -34,72 +36,29 @@ module.exports = {
 
       const user = await UserServices.verifyUser(email, password);
 
-      if (user === 'User not found') {
-        return res
-          .status(404)
-          .send({ status: 'error', message: 'User not found' });
-      }
-      if (user === 'Incorrect Password') {
-        return res
-          .status(401)
-          .send({ status: 'error', message: 'Incorrect Password' });
+      if (!user.username) {
+        return res.status(404).send({ status: 'Error', message: user });
       }
 
-      // * Check validity current refresh token
-      let refresh_token = user.refresh_token;
+      let { refresh_token, token_version } = user;
 
-      const currentToken = Jwt.verifyRefresh(user.refresh_token);
+      const currentToken = Jwt.verifyRefresh(refresh_token);
 
-      // ! Exp refresh token
-      if (currentToken.message === 'jwt expired') {
-        // * Update version
-        const newTokenVersion = user.token_version + 1;
-
-        const newVersion = await UserServices.updateTokenVersion(
-          email,
-          newTokenVersion
-        );
-
-        // * Create new refresh token
-        const payloadRefresh = {
-          username: user.username,
-          email: user.email,
-          token_version: newTokenVersion,
-        };
-
-        const new_refresh_token = Jwt.signRefresh(payloadRefresh);
-
-        // * update refresh token on db
-        const updateToken = await UserServices.updateRefreshToken(
-          user.email,
-          new_refresh_token
-        );
-
-        // * re-assign new token
-        refresh_token = new_refresh_token;
-      }
-
-      // ! Token version updated
-      const decodedToken = Jwt.decodeToken(user.refresh_token);
-
-      if (currentToken.token_version !== user.token_version) {
-        // * Create new refresh token
+      if (
+        currentToken.name === Errors.TokenExpiredError ||
+        currentToken.token_version !== token_version
+      ) {
         const payloadRefresh = {
           username: user.username,
           email: user.email,
           token_version: user.token_version,
         };
 
-        const new_refresh_token = Jwt.signRefresh(payloadRefresh);
+        const newRefreshToken = Jwt.signRefresh(payloadRefresh);
 
-        // * update refresh token on db
-        const updateToken = await UserServices.updateRefreshToken(
-          user.email,
-          new_refresh_token
-        );
+        await UserServices.updateRefreshToken(user.email, newRefreshToken);
 
-        // * re-assign new token
-        refresh_token = new_refresh_token;
+        refresh_token = newRefreshToken;
       }
 
       const payloadAccess = {
@@ -110,8 +69,8 @@ module.exports = {
       const access_token = Jwt.signAccess(payloadAccess);
 
       const cookieOpts = {
-        maxAge: 1000 * 60 * 10, // would expire after 10 minutes
-        httpOnly: true, // The cookie only accessible by the web server
+        maxAge: 1000 * 60 * 10,
+        httpOnly: true,
       };
 
       res
@@ -127,32 +86,40 @@ module.exports = {
     }
   },
 
-  refresh_token: async (req, res) => {
-    const { username, email } = req.user;
+  refreshToken: async (req, res) => {
+    try {
+      const { username, email, token_version } = req.decoded;
 
-    const payload = {
-      username,
-      email,
-    };
+      const user = await UserServices.getUserByEmail(email);
 
-    const access_token = Jwt.signAccess(payload);
-    res.send({ access_token });
+      if (token_version !== user.token_version) {
+        return res
+          .status(401)
+          .send({ status: 'Error', message: 'Unauthorized' });
+      }
+
+      const payload = {
+        username,
+        email,
+      };
+
+      const access_token = Jwt.signAccess(payload);
+
+      res.status(201).send({ access_token });
+    } catch (error) {
+      res.send({ status: 'Error', message: error.message });
+    }
   },
 
   revoke: async (req, res) => {
     try {
-      // * Get refresh token
-      const token = req.cookies.refresh_token;
+      const { refresh_token } = req.cookies;
 
-      const data = Jwt.decodeToken(token);
+      const data = Jwt.decodeToken(refresh_token);
 
-      // * Update token version
       const newVersion = data.token_version + 1;
 
-      const updateVersion = await UserServices.updateTokenVersion(
-        data.email,
-        newVersion
-      );
+      await UserServices.updateTokenVersion(data.email, newVersion);
 
       res
         .cookie('refresh_token', '', {

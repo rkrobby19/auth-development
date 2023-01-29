@@ -12,10 +12,10 @@ router.post('/register', jsonParser, auth.register);
 // * Login
 router.post('/login', jsonParser, auth.login);
 // * Logout
-router.post('/revoke', auth.revoke);
+router.post('/revoke', verifyToken, auth.revoke);
 
 // * Refresh token
-router.post('/refresh_token', verifyToken, auth.refresh_token);
+router.post('/refresh-token', verifyToken, auth.refreshToken);
 
 // * Profile
 router.get(

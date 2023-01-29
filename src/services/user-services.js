@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const Errors = require('../constants/errors');
 const { User } = require('../models');
 
 module.exports = class UserServices {
@@ -22,11 +23,11 @@ module.exports = class UserServices {
 
     // * User not found
     if (!user) {
-      return 'User not found';
+      return Errors.UserNotFound;
     }
     // * Wrong password
     if (!bcrypt.compareSync(password, user.password)) {
-      return 'Incorrect Password';
+      return Errors.IncorrectPassword;
     }
     // * User verified
     return user;

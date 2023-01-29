@@ -1,42 +1,28 @@
-const { getUserByEmail } = require('../services/user-services');
+const Errors = require('../constants/errors');
 const Jwt = require('../utils/jwt');
 
 module.exports = verifyToken = async (req, res, next) => {
   try {
-    const token = req.cookies.refresh_token;
+    const { refresh_token } = req.cookies;
 
-    if (token) {
-      const verify = Jwt.verifyRefresh(token);
+    if (refresh_token) {
+      const decoded = Jwt.verifyRefresh(refresh_token);
 
-      if (verify.message === 'jwt expired') {
-        return res.status(401).send({
-          status: 'error',
-          message: 'Jwt token expired',
-          info: 'Please login again',
-        });
-      }
-
-      if (verify.message === 'invalid signature') {
+      if (
+        decoded.name === Errors.JsonWebTokenError ||
+        decoded.name === Errors.TokenExpiredError
+      ) {
         return res
           .status(401)
-          .send({ status: 'error', message: 'Token invalid' });
+          .send({ status: 'Error', message: decoded.message });
       }
 
-      const user = await getUserByEmail(verify.email);
-
-      if (verify.token_version !== user.token_version) {
-        return res
-          .status(401)
-          .send({ status: 'error', message: 'Token version not valid' });
-      }
-
-      req.user = user;
-
-      next();
+      req.decoded = decoded;
+      return next();
     } else {
       return res
         .status(401)
-        .send({ status: 'error', message: 'No token provided' });
+        .send({ status: 'Error', message: 'No token provided' });
     }
   } catch (error) {
     return res.send(error);

@@ -11,7 +11,7 @@ module.exports = class Jwt {
   // * Exp in 7 days
   static signRefresh = (payload) =>
     jwt.sign(payload, process.env.REFRESH_SECRET, {
-      expiresIn: 60 * 60 * 24 * 7,
+      expiresIn: 60,
       algorithm: 'HS256',
     });
 
