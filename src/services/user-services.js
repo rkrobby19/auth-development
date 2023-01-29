@@ -52,4 +52,9 @@ module.exports = class UserServices {
     const user = await User.findOne({ where: { email } });
     return user;
   };
+
+  static getUserById = async (id) => {
+    const user = await User.findOne({ where: { id } });
+    return user;
+  };
 };

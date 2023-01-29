@@ -13,10 +13,14 @@ app.set('view engine', 'ejs');
 app.set('trust proxy', 1); // trust first proxy
 app.use(
   session({
-    secret: process.env.SESSION_SECRET,
+    store: new (require('connect-pg-simple')(session))({
+      conString: 'postgres://postgres:postgres@localhost:5432/auth_development',
+      createTableIfMissing: true,
+    }),
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: true },
+    cookie: { maxAge: 24 * 60 * 60 * 1000 },
   })
 );
 
