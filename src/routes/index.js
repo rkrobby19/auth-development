@@ -13,8 +13,19 @@ router.get('/login', function (req, res, next) {
 });
 
 router.get('/success', function (req, res, next) {
-  const { username } = req.user;
-  res.send({ message: 'login success', username });
+  const user = req.user;
+  const { id, username, email } = req.session.passport.user;
+
+  const cookieOpts = {
+    maxAge: 1000 * 60 * 10,
+    httpOnly: true,
+  };
+
+  res.cookie('refresh_token', user.refresh_token, cookieOpts).send({
+    message: 'Success',
+    username,
+    email,
+  });
 });
 
 router.get('/login/federated/google', passport.authenticate('google'));

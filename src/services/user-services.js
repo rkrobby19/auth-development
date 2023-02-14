@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs');
 const Errors = require('../constants/errors');
+const UserValidationError = require('../controllers/error-controllers');
 const { User } = require('../models');
 
 module.exports = class UserServices {
@@ -15,7 +16,22 @@ module.exports = class UserServices {
       refresh_token,
     });
 
+    if (!user) {
+      throw new Error(Errors.FailedToRegister);
+    }
+
     return user;
+  };
+
+  static checkUser = async (username, email) => {
+    let user = await this.getUserByUsername(username);
+    if (user) {
+      throw new UserValidationError(Errors.UsernameAlreadyExist);
+    }
+    user = await this.getUserByEmail(email);
+    if (user) {
+      throw new UserValidationError(Errors.EmailAlreadyExist);
+    }
   };
 
   static verifyUser = async (email, password) => {
@@ -23,11 +39,11 @@ module.exports = class UserServices {
 
     // * User not found
     if (!user) {
-      return Errors.UserNotFound;
+      throw new UserValidationError(Errors.UserNotFound);
     }
     // * Wrong password
     if (!bcrypt.compareSync(password, user.password)) {
-      return Errors.IncorrectPassword;
+      throw new UserValidationError(Errors.IncorrectPassword);
     }
     // * User verified
     return user;
@@ -50,6 +66,11 @@ module.exports = class UserServices {
 
   static getUserByEmail = async (email) => {
     const user = await User.findOne({ where: { email } });
+    return user;
+  };
+
+  static getUserByUsername = async (username) => {
+    const user = await User.findOne({ where: { username } });
     return user;
   };
 

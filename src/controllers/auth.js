@@ -1,11 +1,13 @@
-const Errors = require('../constants/errors');
 const UserServices = require('../services/user-services');
 const Jwt = require('../utils/jwt');
+const UserValidationError = require('./error-controllers');
 
 module.exports = {
   register: async (req, res) => {
     try {
       const { username, email, password } = req.body;
+
+      await UserServices.checkUser(username, email);
 
       const payload = {
         username,
@@ -24,9 +26,12 @@ module.exports = {
 
       res.status(201).send({ status: 'success', user: user.username });
     } catch (error) {
-      res
-        .status(422)
-        .send({ status: error.message, message: error.errors[0].message });
+      if (error instanceof UserValidationError) {
+        return res
+          .status(error.code)
+          .send({ status: error.name, message: error.message });
+      }
+      res.status(500).send({ status: error.name, message: error.message });
     }
   },
 
@@ -36,16 +41,12 @@ module.exports = {
 
       const user = await UserServices.verifyUser(email, password);
 
-      if (!user.username) {
-        return res.status(404).send({ status: 'Error', message: user });
-      }
-
       let { refresh_token, token_version } = user;
 
       const currentToken = Jwt.verifyRefresh(refresh_token);
 
       if (
-        currentToken.name === Errors.TokenExpiredError ||
+        currentToken.name !== user.username ||
         currentToken.token_version !== token_version
       ) {
         const payloadRefresh = {
@@ -82,7 +83,12 @@ module.exports = {
           access_token: `Bearer ${access_token}`,
         });
     } catch (error) {
-      res.send({ status: 'Error', message: error.message });
+      if (error instanceof UserValidationError) {
+        return res
+          .status(error.code)
+          .send({ status: error.name, message: error.message });
+      }
+      return res.send({ status: error.name, message: error.message });
     }
   },
 

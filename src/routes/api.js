@@ -20,7 +20,7 @@ router.post('/refresh-token', verifyToken, auth.refreshToken);
 // * Profile
 router.get(
   '/profile',
-  [passport.authenticate('jwt', { session: false })],
+  [passport.authenticate('jwt', { session: true })],
   auth.profile
 );
 
