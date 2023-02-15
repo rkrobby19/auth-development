@@ -74,14 +74,11 @@ module.exports = {
         httpOnly: true,
       };
 
-      res
-        .status(200)
-        .cookie('refresh_token', refresh_token, cookieOpts)
-        .send({
-          message: 'Login Success',
-          user: user.username,
-          access_token: `Bearer ${access_token}`,
-        });
+      res.status(200).cookie('refresh_token', refresh_token, cookieOpts).send({
+        message: 'Login Success',
+        user: user.username,
+        access_token,
+      });
     } catch (error) {
       if (error instanceof UserValidationError) {
         return res
